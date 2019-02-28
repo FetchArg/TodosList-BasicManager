@@ -7,35 +7,47 @@
         <div class="main">
             <input type="checkbox" class="toggle-all" v-model="allDone">
             <ul class="todo-list">
-                <li class="todo" v-for="todo in filteredTodos" :key="todo" :class="{completed: todo.completed}">
+                <li class="todo" v-for="todo in filteredTodos" :key="todo" :class="{completed: todo.completed, editing: todo === editing}">
                     <div class="view">
                         <input type="checkbox" v-model="todo.completed" class="toggle">
-                        <label>{{ todo.name }}</label>
+                        <label @dblclick="editTodo(todo)">{{ todo.name }}</label>
+                        <button class="destroy" @click.prevent="deleteTodo(todo)"></button>
                     </div>
+                    <input type="text" class="edit" v-model="todo.name" @keyup.enter="doneEdit" @blur="doneEdit" @keyup.esc="cancelEdit" v-focus="todo === editing">
                 </li>
             </ul>
         </div>
-        <footer class="footer">
-            <span class="todo-count"><strong>{{ remaining }}</strong>Tâches à faire</span>
+        <footer class="footer" v-show="todos.length > 0">
+            <span class="todo-count"><strong>{{ remaining }}</strong> tâches à faire</span>
             <ul class="filters">
                 <li><a href="#" :class="{selected: filter === 'all'}" @click.prevent="filter = 'all'">Toutes</a></li>
                 <li><a href="#" :class="{selected: filter === 'todo'}" @click.prevent="filter = 'todo'">A faire</a></li>
                 <li><a href="#" :class="{selected: filter === 'done'}" @click.prevent="filter = 'done'">Faites</a></li>
             </ul>
+            <button class="clear-completed" v-show="completed" @click.prevent="deleteCompleted">Supprimer les tâches finies</button>
         </footer>
     </section>
 </template>
 
 <script>
+import Vue from 'vue'
+
 export default {
+  props: {
+    value: {type: Array, default: function () { return [] }}
+  },
   data: function () {
     return {
-      todos: [{
-        name: 'Tache de test',
-        completed: false
-      }],
+      todos: this.value,
       newTodo: '',
-      filter: 'all'
+      filter: 'all',
+      editing: null,
+      oldTodo: ''
+    }
+  },
+  watch: {
+    value: function (value) {
+      this.todos = value
     }
   },
   computed: {
@@ -51,6 +63,9 @@ export default {
     },
     remaining: function () {
       return this.todos.filter(todo => !todo.completed).length
+    },
+    completed: function () {
+      return this.todos.filter(todo => todo.completed).length
     },
     filteredTodos: function () {
       if (this.filter === 'todo') {
@@ -68,6 +83,34 @@ export default {
         name: this.newTodo
       })
       this.newTodo = ''
+    },
+    deleteTodo (todo) {
+      this.todos = this.todos.filter(i => i !== todo)
+      this.$emit('input', this.todos)
+    },
+    deleteCompleted () {
+      this.todos = this.todos.filter(todo => !todo.completed)
+      this.$emit('input', this.todos)
+    },
+    editTodo (todo) {
+      this.editing = todo
+      this.oldTodo = todo.name
+    },
+    doneEdit () {
+      this.editing = null
+    },
+    cancelEdit () {
+      this.editing.name = this.oldTodo
+      this.doneEdit()
+    }
+  },
+  directives: {
+    focus: function (el, value) {
+      if (value) {
+        Vue.nextTick(() => {
+          el.focus()
+        })
+      }
     }
   }
 }
